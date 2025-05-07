@@ -5,6 +5,8 @@ import { useState, useRef } from "react";
 import useSignUpValidation from "../../hooks/useSignUpValidation";
 import useAuth from "../../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { database } from "../../../firebaseConfig";
 
 const SignUp = () => {
   // Declaring state for storing the form data
@@ -72,12 +74,40 @@ const SignUp = () => {
       console.log("form validation failed");
       return;
     }
-    const userCredentials = await signUp(
-      signUpFormData.email,
-      signUpFormData.password
-    );
-    navigate("/verify-email");
-    console.log("Account created successfully!", userCredentials.user);
+    try {
+      const userCredential = await signUp(
+        signUpFormData.email,
+        signUpFormData.password
+      );
+      const user = userCredential.user;
+
+      console.log("Account created successfully!", userCredential.user);
+      await setDoc(doc(database, "users", user.uid), {
+        uid: user.uid,
+        firstname: signUpFormData.firstname,
+        lastname: signUpFormData.lastname,
+        email: user.email,
+        dateOfBirth: signUpFormData.dateOfBirth || "",
+        profilePicture: null,
+        createdAt: serverTimestamp(),
+      });
+      navigate("/verify-email");
+      console.log("user added to firestore database");
+
+      setSignUpFormData({
+        firstname: "",
+        lastname: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        dateOfBirth: "",
+        profilePicture: null,
+        previewUrl: "",
+      });
+      fileInputRef.current = "";
+    } catch (error) {
+      console.log(error.message);
+    }
   };
 
   return (
